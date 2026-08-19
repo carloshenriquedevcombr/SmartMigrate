@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Migrações Móvel — Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --purple: #6d18c9; --purple-dark: #4c0b93; --purple-soft: #f5effd;
+            --blue: #178fe0; --ink: #172033; --muted: #697386; --line: #e8e9ef;
+            --paper: #ffffff; --bg: #f2f3f7; --green: #15845b; --red: #c0392b; --orange: #f39c12;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--ink); margin: 0; padding: 12px; }
+        .container { width: 210mm; max-height: 96vh; margin: 0 auto; background: var(--paper); padding: 10mm 12mm 8mm; border-radius: 12px; box-shadow: 0 10px 30px rgba(25, 20, 40, .08); overflow-y: auto; display: flex; flex-direction: column; position: relative; }
+        .container::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--purple-dark), var(--purple), #9b48e6); }
+        h1 { margin: 0 0 2px; font-size: 22px; font-weight: 800; }
+        h2 { font-size: 13px; color: var(--ink); margin: 12px 0 6px; }
+        p { margin: 0 0 10px; color: var(--muted); font-size: 11px; }
+        .upload-section { border: 2px dashed #d1c4e9; padding: 22px; text-align: center; border-radius: 10px; background-color: var(--purple-soft); margin-bottom: 15px; }
+        input[type="file"] { display: none; }
+        .file-select-label { display: inline-block; background-color: white; color: var(--purple); border: 2px solid var(--purple); padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; }
+        .file-name { display: block; margin-top: 8px; font-size: 11px; color: var(--muted); }
+        .btn-calculate { display: none; width: 100%; background-color: var(--purple); color: white; border: none; padding: 11px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; margin-top: 10px; margin-bottom: 15px; }
+        .btn-back { background-color: var(--muted); color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-bottom: 12px; }
+        
+        /* Regras */
+        .rules-card { background: #faf9fd; border: 1px solid var(--line); border-left: 4px solid var(--purple); padding: 10px 14px; border-radius: 8px; margin-top: 6px; }
+        .rules-card h3 { margin: 0 0 4px; font-size: 11px; color: var(--purple-dark); text-transform: uppercase; letter-spacing: 0.04em; }
+        .rules-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; font-size: 10px; color: var(--muted); }
+        .rules-grid div strong { color: var(--ink); display: block; margin-bottom: 2px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 8px; font-size: 11px; }
+        th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+        th { background-color: var(--purple); color: white; text-transform: uppercase; font-size: 9px; }
+        tr:nth-child(even) { background-color: #faf9fd; }
+        tfoot { background-color: var(--purple-soft); font-weight: bold; color: var(--purple-dark); }
+        .status-up { color: var(--green); font-weight: 800; }
+        .status-downgrade { color: var(--blue); font-weight: 800; }
+        .status-fora { color: var(--red); font-weight: 800; }
+        .status-padrao { color: var(--orange); font-weight: 800; }
+        .hidden { display: none !important; }
+        .flex-container { display: flex; gap: 12px; justify-content: space-between; }
+        .flex-container > div { flex: 1; }
+        .gb-highlight { color: var(--blue); font-weight: 700; }
+        .alert-obs { background: #fff7ed; border-left: 4px solid var(--orange); padding: 8px; font-size: 11px; color: #9a3412; margin-bottom: 10px; border-radius: 6px; font-weight: 600; }
+
+        @media (max-width: 700px) {
+            .rules-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📊 Análise de Migrações Móvel</h1>
+    <p>Processamento robusto via Backend Python (Flask + Pandas).</p>
+
+    <!-- TELA 1 -->
+    <div id="screenUpload">
+        <div class="upload-section">
+            <label for="fileUpload" class="file-select-label">📁 Selecionar Arquivo Excel</label>
+            <input type="file" id="fileUpload" accept=".xlsx, .xlsm, .xls" />
+            <span id="fileName" class="file-name">Nenhum arquivo escolhido</span>
+        </div>
+        
+        <button id="btnCalculate" class="btn-calculate">⚙️ Enviar e Processar no Backend</button>
+
+        <!-- Guia Explicativo -->
+        <div class="rules-card">
+            <h3>📋 Como funciona a análise dos clientes?</h3>
+            <div class="rules-grid">
+                <div>
+                    <strong>Clientes Novos (M0 a M6)</strong>
+                    <span>Não entram nas ofertas de troca e ficam <strong>Fora do Mailing</strong>.</span>
+                </div>
+                <div>
+                    <strong>Intermediários (M7 a M16)</strong>
+                    <span>Upgrade obrigatório (dobro da franquia de internet). Sem retroceder plano.</span>
+                </div>
+                <div>
+                    <strong>Antigos e M23+ (M17+)</strong>
+                    <span>Upgrade, Padrão ou Downgrade. Analisar o <strong>Red. Limite</strong> para não ultrapassar.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA 2 -->
+    <div id="screenResults" class="hidden">
+        <button id="btnBack" class="btn-back">⬅️ Enviar Nova Planilha</button>
+        <div id="obsAlert" class="alert-obs hidden">
+            ⚠️ <strong>Observação Importante (M17+):</strong> Analisar o <strong>Red. Limite</strong> para garantir que clientes em redução não ultrapassem os limites.
+        </div>
+
+        <h2>🎯 Resumo NO CRM (Total)</h2>
+        <table id="summaryTable">
+            <thead>
+                <tr><th>Faixa</th><th>Qtd</th><th>Fat. Atual</th><th>Fat. Novo</th><th>Crescimento</th><th>NO CRM</th></tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+        </table>
+
+        <h2>📦 Resumo de Produtos e Franquia de Internet</h2>
+        <div class="flex-container">
+            <div>
+                <table id="tablePlanta">
+                    <thead><tr><th style="background-color: var(--muted);">Produto Planta (Atual)</th><th style="background-color: var(--muted); width: 130px;">Qtd / Total GB</th></tr></thead>
+                    <tbody></tbody><tfoot></tfoot>
+                </table>
+            </div>
+            <div>
+                <table id="tableRecomendacao">
+                    <thead><tr><th style="background-color: var(--purple-dark);">Produto Recomendação (Novo)</th><th style="background-color: var(--purple-dark); width: 130px;">Qtd / Total GB</th></tr></thead>
+                    <tbody></tbody><tfoot></tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let arquivoBruto = null;
+    const API_URL = "http://localhost:5000/api/analisar"; // Altere para o IP da sua VPS em produção
+
+    const fileInput = document.getElementById('fileUpload');
+    const fileNameSpan = document.getElementById('fileName');
+    const btnCalculate = document.getElementById('btnCalculate');
+    const screenUpload = document.getElementById('screenUpload');
+    const screenResults = document.getElementById('screenResults');
+    const btnBack = document.getElementById('btnBack');
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            arquivoBruto = e.target.files[0];
+            fileNameSpan.textContent = "Pronto: " + arquivoBruto.name;
+            btnCalculate.style.display = "block";
+        }
+    });
+
+    btnCalculate.addEventListener('click', async () => {
+        if (!arquivoBruto) return;
+        btnCalculate.textContent = "Processando no Servidor Python...";
+        
+        const formData = new FormData();
+        formData.append("file", arquivoBruto);
+
+        try {
+            const response = await fetch(API_URL, { method: "POST", body: formData });
+            const data = await response.json();
+
+            if (data.success) {
+                renderizarResultados(data);
+                screenUpload.classList.add('hidden');
+                screenResults.classList.remove('hidden');
+            } else {
+                alert("Erro no servidor: " + data.error);
+            }
+        } catch (err) {
+            alert("Erro de conexão com o backend Flask. Verifique se o servidor Python está rodando.");
+        } finally {
+            btnCalculate.textContent = "⚙️ Enviar e Processar no Backend";
+        }
+    });
+
+    btnBack.addEventListener('click', () => {
+        fileInput.value = ''; arquivoBruto = null;
+        fileNameSpan.textContent = "Nenhum arquivo escolhido";
+        btnCalculate.style.display = "none";
+        screenResults.classList.add('hidden');
+        screenUpload.classList.remove('hidden');
+    });
+
+    function renderizarResultados(data) {
+        const tbody = document.querySelector('#summaryTable tbody');
+        const tfoot = document.querySelector('#summaryTable tfoot');
+        tbody.innerHTML = ''; tfoot.innerHTML = '';
+
+        data.resumo_crm.forEach(f => {
+            let sc = f.status === 'UPGRADE' ? 'status-up' : (f.status === 'DOWNGRADE' ? 'status-downgrade' : (f.status === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
+            tbody.innerHTML += `<tr>
+                <td><strong>${f.faixa}</strong></td><td>${f.qtd}</td>
+                <td>${formatCurrency(f.atual)}</td><td>${formatCurrency(f.novo)}</td>
+                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : 'var(--blue)'};">${f.crescimento.toFixed(2).replace('.',',')}%</td>
+                <td class="${sc}">${f.status}</td>
+            </tr>`;
+        });
+
+        tfoot.innerHTML = `<tr>
+            <td>TOTAL GERAL</td><td>${data.totais_crm.count}</td>
+            <td>${formatCurrency(data.totais_crm.atual)}</td><td>${formatCurrency(data.totais_crm.novo)}</td>
+            <td style="color: ${data.totais_crm.crescimento > 0 ? 'var(--green)' : 'var(--red)'};">${data.totais_crm.crescimento.toFixed(2).replace('.',',')}%</td>
+            <td>-</td>
+        </tr>`;
+
+        if (data.tem_m17_mais) document.getElementById('obsAlert').classList.remove('hidden');
+        else document.getElementById('obsAlert').classList.add('hidden');
+
+        renderTabelaProdutos('#tablePlanta', data.planta);
+        renderTabelaProdutos('#tableRecomendacao', data.recomendacao);
+    }
+
+    function renderTabelaProdutos(seletor, obj) {
+        const tbody = document.querySelector(seletor + ' tbody');
+        const tfoot = document.querySelector(seletor + ' tfoot');
+        tbody.innerHTML = '';
+        obj.itens.forEach(i => {
+            tbody.innerHTML += `<tr><td>${i.nome}</td><td><strong>${i.qtd}</strong> <span style="color:var(--muted)">(${formatarFranquia(i.gb)})</span></td></tr>`;
+        });
+        tfoot.innerHTML = `<tr><td>TOTAL</td><td><strong>${obj.total_qtd}</strong> <span class="gb-highlight">(${formatarFranquia(obj.total_gb)})</span></td></tr>`;
+    }
+
+    function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v); }
+    function formatarFranquia(gb) { return gb < 1 ? Math.round(gb*1000) + ' MB' : Math.round(gb) + ' GB'; }
+</script>
+</body>
+</html>
