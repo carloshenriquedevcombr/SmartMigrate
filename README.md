@@ -19,9 +19,21 @@ Este projeto resolve esse problema através de uma arquitetura **desacoplada (Fr
 
 ### 📸 Preview da Aplicação
 
-> **Nota:** *Adicione aqui uma imagem da sua tela final.*
-> `![Dashboard de Resultados](caminho/para/sua/imagem.png)`
+> `<p align="center">
+  <img src="imagens/tela inicial.png" alt="Tela de Carregamento" width="800">
+</p>
 
+> `<p align="center">
+  <img src="imagens/upload.png" alt="Tela de Carregamento" width="800">
+</p>
+
+> `<p align="center">
+  <img src="imagens/carregamento.png" alt="Tela de Carregamento" width="800">
+</p>
+
+> `<p align="center">
+  <img src="imagens/resultado.png" alt="Tela de Carregamento" width="800">
+</p>
 ---
 
 ## ✨ Principais Funcionalidades
@@ -65,4 +77,4 @@ Siga os passos abaixo para rodar a aplicação na sua máquina.
 ### Passo 1: Configurando o Backend
 1. Clone este repositório:
    ```bash
-   git clone [https://github.com/SEU-USUARIO/meu-projeto-delta.git](https://github.com/SEU-USUARIO/meu-projeto-delta.git)
+   git clone https://github.com/carloshenriquedevcombr/SmartMigrate.git
