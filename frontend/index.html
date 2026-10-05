@@ -116,6 +116,14 @@
             <tfoot></tfoot>
         </table>
 
+        <div id="foraMailingBox" class="hidden">
+            <h2>🚫 Linhas Fora do Mailing (<span id="foraMailingQtd">0</span>)</h2>
+            <table id="tableForaMailing">
+                <thead><tr><th style="background-color: var(--red);">Telefone</th><th style="background-color: var(--red);">M</th><th style="background-color: var(--red);">Plano Atual</th><th style="background-color: var(--red);">Franquia Atual</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
         <h2>📦 Resumo de Produtos e Franquia de Internet</h2>
         <div class="flex-container">
             <div>
@@ -227,8 +235,23 @@
         if (data.tem_m23_mais) document.getElementById('obsAlert').classList.remove('hidden');
         else document.getElementById('obsAlert').classList.add('hidden');
 
+        renderForaMailing(data.fora_mailing || []);
         renderTabelaProdutos('#tablePlanta', data.planta);
         renderTabelaProdutos('#tableRecomendacao', data.recomendacao);
+    }
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function renderForaMailing(linhas) {
+        const box = document.getElementById('foraMailingBox');
+        const tbody = document.querySelector('#tableForaMailing tbody');
+        tbody.innerHTML = '';
+        document.getElementById('foraMailingQtd').textContent = linhas.length;
+        box.classList.toggle('hidden', linhas.length === 0);
+        tbody.innerHTML = linhas.map(l => `<tr>
+            <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
+            <td>${escapeHtml(l.produto)}</td><td class="gb-highlight">${formatarFranquia(l.gb)}</td>
+        </tr>`).join('');
     }
 
     function renderTabelaProdutos(seletor, obj) {

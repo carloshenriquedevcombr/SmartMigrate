@@ -38,6 +38,15 @@ def extrair_gb(nome_produto):
     return int(match.group(1)) if match else 0
 
 
+def formatar_telefone(valor):
+    """Converte o telefone lido do Excel em texto, sem o '.0' de números float."""
+    if valor is None or pd.isna(valor):
+        return ""
+    if isinstance(valor, float) and valor.is_integer():
+        return str(int(valor))
+    return str(valor).strip()
+
+
 def converter_red_limite(valor_str):
     """
     Converte o limite em string vindo do frontend (ex: '-9,78%') para float (-9.78).
@@ -109,6 +118,7 @@ def analisar():
         faixas_resultado = {}
         contagem_planta = {}
         contagem_recomendacao = {}
+        fora_mailing = []
         tem_m23_mais = False
 
         for _, row in df.iterrows():
@@ -161,6 +171,15 @@ def analisar():
                     status = "UPGRADE"
                 else:
                     status = "PADRÃO"
+
+            # Lista das linhas que ficam fora do mailing, com a franquia do plano atual
+            if status == "FORA DO MAILING":
+                fora_mailing.append({
+                    "telefone": formatar_telefone(row.get("Telefone", "")),
+                    "m": int(m),
+                    "produto": planta,
+                    "gb": extrair_gb(planta),
+                })
 
             # Agregação dos resultados
             chave_agrupamento = f"{fx}|{status}"
@@ -236,6 +255,7 @@ def analisar():
                 "crescimento": round(crescimento_geral, 2),
             },
             "tem_m23_mais": tem_m23_mais,
+            "fora_mailing": fora_mailing,
             "planta": {"itens": planta_lista, "total_qtd": q_p, "total_gb": gb_p},
             "recomendacao": {
                 "itens": rec_lista,
