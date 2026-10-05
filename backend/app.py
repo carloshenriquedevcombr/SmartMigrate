@@ -140,9 +140,9 @@ def analisar():
                     
             elif m <= REGRAS["FAIXA_3_FIM"]:
                 fx = "M17 a M22"
-                # Regra 3: M entre 17 e 22, valor negativo = Fora do Mailing independentemente do limite
+                # Regra 3: M17+ nunca fica fora do mailing; valor negativo = Downgrade
                 if crescimento_linha < 0:
-                    status = "FORA DO MAILING"
+                    status = "DOWNGRADE"
                 elif crescimento_linha >= REGRAS["UPGRADE_MIN_M17"]:
                     status = "UPGRADE"
                 else:
@@ -152,9 +152,9 @@ def analisar():
                 fx = "M23+"
                 tem_m23_mais = True
                 if crescimento_linha < 0:
-                    # Comparação Matemática: Verifica se o valor analisado está ABAIXO do limite informado
+                    # Abaixo do Red. Limite continua no mailing, mas sinalizado para análise
                     if crescimento_linha < red_limite_float:
-                        status = "FORA DO MAILING"
+                        status = "DOWNGRADE ACIMA DO LIMITE"
                     else: # Se está no limite ou é um valor maior (ex: -8.00 >= -9.78)
                         status = "DOWNGRADE"
                 elif crescimento_linha >= REGRAS["UPGRADE_MIN_M17"]:

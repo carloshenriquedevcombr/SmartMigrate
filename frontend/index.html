@@ -86,7 +86,7 @@
             <div class="rules-grid">
                 <div>
                     <strong>Clientes Novos (M0 a M6)</strong>
-                    <span>Não entram nas ofertas de troca e ficam <strong>Fora do Mailing</strong>.</span>
+                    <span>Upgrade sempre obrigatório, mas ficam <strong>Fora do Mailing</strong>.</span>
                 </div>
                 <div>
                     <strong>Intermediários (M7 a M16)</strong>
@@ -94,7 +94,7 @@
                 </div>
                 <div>
                     <strong>Antigos (M17+)</strong>
-                    <span>M17 a M22 negativo é excluído. M23+ utiliza o <strong>Red. Limite</strong> para aprovar downgrades.</span>
+                    <span>Nunca ficam fora do mailing: negativo vira Downgrade. No M23+, quem passa do <strong>Red. Limite</strong> é sinalizado.</span>
                 </div>
             </div>
         </div>
@@ -208,7 +208,7 @@
         tbody.innerHTML = ''; tfoot.innerHTML = '';
 
         data.resumo_crm.forEach(f => {
-            let sc = f.status === 'UPGRADE' ? 'status-up' : (f.status === 'DOWNGRADE' ? 'status-downgrade' : (f.status === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
+            let sc = f.status === 'UPGRADE' ? 'status-up' : (f.status.startsWith('DOWNGRADE') ? 'status-downgrade' : (f.status === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
             tbody.innerHTML += `<tr>
                 <td><strong>${f.faixa}</strong></td><td>${f.qtd}</td>
                 <td>${formatCurrency(f.atual)}</td><td>${formatCurrency(f.novo)}</td>
