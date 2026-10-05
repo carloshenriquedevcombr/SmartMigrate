@@ -38,6 +38,18 @@ def extrair_gb(nome_produto):
     return int(match.group(1)) if match else 0
 
 
+# Nomes aceitos para a coluna do número da linha (sem diferenciar maiúsculas)
+COLUNAS_TELEFONE = ["telefone", "linha", "numero", "número", "numerolinha", "celular", "msisdn", "fone"]
+
+
+def achar_coluna_telefone(df):
+    normalizadas = {str(c).strip().lower().replace(" ", "").replace("_", ""): c for c in df.columns}
+    for nome in COLUNAS_TELEFONE:
+        if nome in normalizadas:
+            return normalizadas[nome]
+    return None
+
+
 def formatar_telefone(valor):
     """Converte o telefone lido do Excel em texto, sem o '.0' de números float."""
     if valor is None or pd.isna(valor):
@@ -47,27 +59,11 @@ def formatar_telefone(valor):
     return str(valor).strip()
 
 
-def converter_red_limite(valor_str):
-    """
-    Converte o limite em string vindo do frontend (ex: '-9,78%') para float (-9.78).
-    """
-    if not valor_str:
-        return 0.0
-    
-    # Remove o símbolo de porcentagem e espaços
-    valor_limpo = valor_str.replace('%', '').strip()
-    # Substitui a vírgula brasileira por ponto para conversão matemática
-    valor_limpo = valor_limpo.replace(',', '.')
-    
-    try:
-        return float(valor_limpo)
-    except ValueError:
-        return 0.0
-
-
 @app.route("/")
 def index():
-    return send_from_directory(FRONTEND_DIR, "index.html")
+    resposta = send_from_directory(FRONTEND_DIR, "index.html")
+    resposta.headers["Cache-Control"] = "no-cache"  # Sempre pega a versão nova após um deploy
+    return resposta
 
 
 @app.route("/health")
@@ -80,12 +76,6 @@ def analisar():
     if "file" not in request.files:
         return jsonify({"error": "Nenhum arquivo enviado"}), 400
 
-    # 1. Capturando o Red. Limite obrigatório do Frontend
-    red_limite_str = request.form.get("red_limite")
-    if not red_limite_str:
-        return jsonify({"error": "O valor do Red. Limite é obrigatório para a análise."}), 400
-    
-    red_limite_float = converter_red_limite(red_limite_str)
     file = request.files["file"]
     
     try:
@@ -119,7 +109,7 @@ def analisar():
         contagem_planta = {}
         contagem_recomendacao = {}
         fora_mailing = []
-        tem_m23_mais = False
+        coluna_telefone = achar_coluna_telefone(df)
 
         for _, row in df.iterrows():
             m = row["M"]
@@ -160,13 +150,9 @@ def analisar():
                     
             else:
                 fx = "M23+"
-                tem_m23_mais = True
+                # Mesma regra do M17 a M22: negativo = Downgrade
                 if crescimento_linha < 0:
-                    # Abaixo do Red. Limite continua no mailing, mas sinalizado para análise
-                    if crescimento_linha < red_limite_float:
-                        status = "DOWNGRADE ACIMA DO LIMITE"
-                    else: # Se está no limite ou é um valor maior (ex: -8.00 >= -9.78)
-                        status = "DOWNGRADE"
+                    status = "DOWNGRADE"
                 elif crescimento_linha >= REGRAS["UPGRADE_MIN_M17"]:
                     status = "UPGRADE"
                 else:
@@ -175,7 +161,7 @@ def analisar():
             # Lista das linhas que ficam fora do mailing, com a franquia do plano atual
             if status == "FORA DO MAILING":
                 fora_mailing.append({
-                    "telefone": formatar_telefone(row.get("Telefone", "")),
+                    "telefone": formatar_telefone(row[coluna_telefone]) if coluna_telefone else "",
                     "m": int(m),
                     "produto": planta,
                     "gb": extrair_gb(planta),
@@ -254,7 +240,6 @@ def analisar():
                 "novo": total_novo,
                 "crescimento": round(crescimento_geral, 2),
             },
-            "tem_m23_mais": tem_m23_mais,
             "fora_mailing": fora_mailing,
             "planta": {"itens": planta_lista, "total_qtd": q_p, "total_gb": gb_p},
             "recomendacao": {
