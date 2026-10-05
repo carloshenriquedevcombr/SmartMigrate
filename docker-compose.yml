@@ -1,0 +1,9 @@
+services:
+  nexussmartmigrate:
+    build: .
+    container_name: nexussmartmigrate
+    restart: unless-stopped
+    # Publica só na bridge do Docker (172.17.0.1), que é o endereço usado
+    # pelo Nginx Proxy Manager. A porta 5000 não fica aberta para a internet.
+    ports:
+      - "172.17.0.1:5000:5000"

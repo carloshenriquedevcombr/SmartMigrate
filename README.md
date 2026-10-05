@@ -1,4 +1,6 @@
-# 📊 Sistema de Análise de Migrações Móvel (CRM)
+# 📊 NexusSmartMigrate
+
+> Sistema de Análise de Migrações Móvel (CRM)
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
@@ -68,13 +70,52 @@ A aplicação foi dividida em duas camadas independentes para facilitar a manute
 
 ## 🚀 Como Executar o Projeto Localmente
 
-Siga os passos abaixo para rodar a aplicação na sua máquina.
-
 ### Pré-requisitos
-- Python 3.10+ instalado.
+- Python 3.12+ instalado.
 - Navegador Web moderno.
 
-### Passo 1: Configurando o Backend
-1. Clone este repositório:
-   ```bash
-   git clone https://github.com/carloshenriquedevcombr/SmartMigrate.git
+```bash
+git clone https://github.com/carloshenriquedevcombr/SmartMigrate.git NexusSmartMigrate
+cd NexusSmartMigrate/backend
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+python app.py
+```
+
+Acesse **http://localhost:5000**. O Flask serve o frontend (`frontend/index.html`) na raiz e a API em `/api/analisar`, então tudo roda no mesmo endereço.
+
+---
+
+## 🌐 Deploy na VPS (Docker + Nginx Proxy Manager)
+
+Na VPS (com Docker e Docker Compose instalados):
+
+```bash
+git clone https://github.com/carloshenriquedevcombr/SmartMigrate.git /opt/nexussmartmigrate
+cd /opt/nexussmartmigrate
+docker compose up -d --build
+curl http://172.17.0.1:5000/health   # deve responder {"status":"ok"}
+```
+
+O container roda com **gunicorn** (sem modo debug) e publica a porta `5000` apenas em `172.17.0.1`, o IP da bridge do Docker no host.
+
+No **Nginx Proxy Manager**, o Proxy Host fica assim:
+
+| Campo | Valor |
+|---|---|
+| Domain Names | `smartmigrate.carloshenriquedev.com` |
+| Scheme | `http` |
+| Forward Hostname / IP | `172.17.0.1` |
+| Forward Port | `5000` |
+| SSL | Let's Encrypt + Force SSL |
+
+Para atualizar depois de um novo push:
+
+```bash
+cd /opt/nexussmartmigrate
+git pull
+docker compose up -d --build
+```
+
+Logs: `docker compose logs -f`

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise de Migrações Móvel — Portfolio</title>
+    <title>NexusSmartMigrate — Análise de Migrações Móvel</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -22,6 +22,13 @@
         input[type="file"] { display: none; }
         .file-select-label { display: inline-block; background-color: white; color: var(--purple); border: 2px solid var(--purple); padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; }
         .file-name { display: block; margin-top: 8px; font-size: 11px; color: var(--muted); }
+        
+        /* Novo estilo para o input do Red. Limite */
+        .input-limite { padding: 10px; border: 1px solid var(--purple); border-radius: 6px; width: 100%; font-size: 13px; text-align: center; outline: none; }
+        .input-limite:focus { box-shadow: 0 0 0 3px rgba(109, 24, 201, 0.2); }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--ink); }
+
         .btn-calculate { display: none; width: 100%; background-color: var(--purple); color: white; border: none; padding: 11px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; margin-top: 10px; margin-bottom: 15px; }
         .btn-back { background-color: var(--muted); color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-bottom: 12px; }
         
@@ -54,7 +61,7 @@
 <body>
 
 <div class="container">
-    <h1>📊 Análise de Migrações Móvel</h1>
+    <h1>📊 NexusSmartMigrate</h1>
     <p>Processamento robusto via Backend Python (Flask + Pandas).</p>
 
     <!-- TELA 1 -->
@@ -63,6 +70,12 @@
             <label for="fileUpload" class="file-select-label">📁 Selecionar Arquivo Excel</label>
             <input type="file" id="fileUpload" accept=".xlsx, .xlsm, .xls" />
             <span id="fileName" class="file-name">Nenhum arquivo escolhido</span>
+        </div>
+
+        <!-- NOVO CAMPO: Red. Limite -->
+        <div class="input-group" id="grupoLimite" style="display: none;">
+            <label for="redLimite">Qual é o valor do Red. Limite que devo utilizar para a análise?</label>
+            <input type="text" id="redLimite" class="input-limite" placeholder="Exemplo: -9,78%" />
         </div>
         
         <button id="btnCalculate" class="btn-calculate">⚙️ Enviar e Processar no Backend</button>
@@ -77,11 +90,11 @@
                 </div>
                 <div>
                     <strong>Intermediários (M7 a M16)</strong>
-                    <span>Upgrade obrigatório (dobro da franquia de internet). Sem retroceder plano.</span>
+                    <span>Upgrade obrigatório. Sem retroceder plano.</span>
                 </div>
                 <div>
-                    <strong>Antigos e M23+ (M17+)</strong>
-                    <span>Upgrade, Padrão ou Downgrade. Analisar o <strong>Red. Limite</strong> para não ultrapassar.</span>
+                    <strong>Antigos (M17+)</strong>
+                    <span>M17 a M22 negativo é excluído. M23+ utiliza o <strong>Red. Limite</strong> para aprovar downgrades.</span>
                 </div>
             </div>
         </div>
@@ -91,7 +104,7 @@
     <div id="screenResults" class="hidden">
         <button id="btnBack" class="btn-back">⬅️ Enviar Nova Planilha</button>
         <div id="obsAlert" class="alert-obs hidden">
-            ⚠️ <strong>Observação Importante (M17+):</strong> Analisar o <strong>Red. Limite</strong> para garantir que clientes em redução não ultrapassem os limites.
+            ⚠️ <strong>Análise M23+ Concluída:</strong> O Red. Limite informado foi aplicado no cálculo de downgrades.
         </div>
 
         <h2>🎯 Resumo NO CRM (Total)</h2>
@@ -123,10 +136,12 @@
 
 <script>
     let arquivoBruto = null;
-    const API_URL = "http://localhost:5000/api/analisar"; // Altere para o IP da sua VPS em produção
+    const API_URL = "/api/analisar"; // Mesmo domínio: o Flask serve esta página e a API
 
     const fileInput = document.getElementById('fileUpload');
     const fileNameSpan = document.getElementById('fileName');
+    const redLimiteInput = document.getElementById('redLimite');
+    const grupoLimite = document.getElementById('grupoLimite');
     const btnCalculate = document.getElementById('btnCalculate');
     const screenUpload = document.getElementById('screenUpload');
     const screenResults = document.getElementById('screenResults');
@@ -136,16 +151,27 @@
         if (e.target.files.length > 0) {
             arquivoBruto = e.target.files[0];
             fileNameSpan.textContent = "Pronto: " + arquivoBruto.name;
+            grupoLimite.style.display = "block"; // Mostra o input do Red Limite
             btnCalculate.style.display = "block";
         }
     });
 
     btnCalculate.addEventListener('click', async () => {
         if (!arquivoBruto) return;
+
+        // VALIDAÇÃO OBRIGATÓRIA DO RED. LIMITE
+        const valorLimite = redLimiteInput.value.trim();
+        if (!valorLimite) {
+            alert("Antes de processar o arquivo, preciso obrigatoriamente do valor do Red. Limite. Qual valor devo utilizar? Exemplo: -9,78%.");
+            redLimiteInput.focus();
+            return;
+        }
+
         btnCalculate.textContent = "Processando no Servidor Python...";
         
         const formData = new FormData();
         formData.append("file", arquivoBruto);
+        formData.append("red_limite", valorLimite); // Enviando o parâmetro para o Backend
 
         try {
             const response = await fetch(API_URL, { method: "POST", body: formData });
@@ -166,8 +192,11 @@
     });
 
     btnBack.addEventListener('click', () => {
-        fileInput.value = ''; arquivoBruto = null;
+        fileInput.value = ''; 
+        arquivoBruto = null;
+        redLimiteInput.value = '';
         fileNameSpan.textContent = "Nenhum arquivo escolhido";
+        grupoLimite.style.display = "none";
         btnCalculate.style.display = "none";
         screenResults.classList.add('hidden');
         screenUpload.classList.remove('hidden');
@@ -183,7 +212,7 @@
             tbody.innerHTML += `<tr>
                 <td><strong>${f.faixa}</strong></td><td>${f.qtd}</td>
                 <td>${formatCurrency(f.atual)}</td><td>${formatCurrency(f.novo)}</td>
-                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : 'var(--blue)'};">${f.crescimento.toFixed(2).replace('.',',')}%</td>
+                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : (f.crescimento < 0 ? 'var(--red)' : 'var(--blue)')};">${f.crescimento.toFixed(2).replace('.',',')}%</td>
                 <td class="${sc}">${f.status}</td>
             </tr>`;
         });
@@ -195,7 +224,7 @@
             <td>-</td>
         </tr>`;
 
-        if (data.tem_m17_mais) document.getElementById('obsAlert').classList.remove('hidden');
+        if (data.tem_m23_mais) document.getElementById('obsAlert').classList.remove('hidden');
         else document.getElementById('obsAlert').classList.add('hidden');
 
         renderTabelaProdutos('#tablePlanta', data.planta);
