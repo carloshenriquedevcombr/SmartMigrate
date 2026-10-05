@@ -62,7 +62,7 @@ def formatar_telefone(valor):
 @app.route("/")
 def index():
     resposta = send_from_directory(FRONTEND_DIR, "index.html")
-    resposta.headers["Cache-Control"] = "no-cache"  # Sempre pega a versão nova após um deploy
+    resposta.headers["Cache-Control"] = "no-store"  # Sempre pega a versão nova após um deploy
     return resposta
 
 
@@ -109,6 +109,7 @@ def analisar():
         contagem_planta = {}
         contagem_recomendacao = {}
         fora_mailing = []
+        dentro_mailing = []
         coluna_telefone = achar_coluna_telefone(df)
 
         for _, row in df.iterrows():
@@ -158,14 +159,22 @@ def analisar():
                 else:
                     status = "PADRÃO"
 
-            # Lista das linhas que ficam fora do mailing, com a franquia do plano atual
+            # Lista linha a linha: fora do mailing (fica no plano atual) ou dentro (vai para a recomendação)
+            linha = {
+                "telefone": formatar_telefone(row[coluna_telefone]) if coluna_telefone else "",
+                "m": int(m),
+                "produto": planta,
+                "gb": extrair_gb(planta),
+            }
             if status == "FORA DO MAILING":
-                fora_mailing.append({
-                    "telefone": formatar_telefone(row[coluna_telefone]) if coluna_telefone else "",
-                    "m": int(m),
-                    "produto": planta,
-                    "gb": extrair_gb(planta),
+                fora_mailing.append(linha)
+            else:
+                linha.update({
+                    "produto_novo": recomendacao,
+                    "gb_novo": extrair_gb(recomendacao),
+                    "status": status,
                 })
+                dentro_mailing.append(linha)
 
             # Agregação dos resultados
             chave_agrupamento = f"{fx}|{status}"
@@ -207,7 +216,11 @@ def analisar():
             })
 
         # Agrupa as linhas fora do mailing por M e plano atual
-        fora_mailing.sort(key=lambda x: (x["m"], x["gb"], x["produto"].lower(), x["telefone"]))
+        def ordem_linha(x):
+            return (x["m"], x["gb"], x["produto"].lower(), x.get("gb_novo", 0), x.get("produto_novo", "").lower(), x["telefone"])
+
+        fora_mailing.sort(key=ordem_linha)
+        dentro_mailing.sort(key=ordem_linha)
 
         # Ordenar resumo (opcional, para exibir organizado na tabela do HTML)
         ordem_faixas = {"M0 a M6": 1, "M7 a M16": 2, "M17 a M22": 3, "M23+": 4}
@@ -244,6 +257,7 @@ def analisar():
                 "crescimento": round(crescimento_geral, 2),
             },
             "fora_mailing": fora_mailing,
+            "dentro_mailing": dentro_mailing,
             "planta": {"itens": planta_lista, "total_qtd": q_p, "total_gb": gb_p},
             "recomendacao": {
                 "itens": rec_lista,

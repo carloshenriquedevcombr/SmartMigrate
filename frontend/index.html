@@ -44,6 +44,7 @@
         .hidden { display: none !important; }
         .flex-container { display: flex; gap: 12px; justify-content: space-between; }
         .flex-container > div { flex: 1; }
+        .grupo-dentro td { background-color: #e8f5ee; color: var(--green); font-weight: 800; font-size: 11px; }
         .grupo-fora td { background-color: #fdecea; color: var(--red); font-weight: 800; font-size: 11px; }
         .gb-highlight { color: var(--blue); font-weight: 700; }
         .alert-obs { background: #fff7ed; border-left: 4px solid var(--orange); padding: 8px; font-size: 11px; color: #9a3412; margin-bottom: 10px; border-radius: 6px; font-weight: 600; }
@@ -106,6 +107,14 @@
             <h2>🚫 Linhas Fora do Mailing (<span id="foraMailingQtd">0</span>)</h2>
             <table id="tableForaMailing">
                 <thead><tr><th style="background-color: var(--red);">Telefone</th><th style="background-color: var(--red);">M</th><th style="background-color: var(--red);">Plano Atual</th><th style="background-color: var(--red);">Franquia Atual</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="dentroMailingBox" class="hidden">
+            <h2>✅ Linhas Dentro do Mailing (<span id="dentroMailingQtd">0</span>)</h2>
+            <table id="tableDentroMailing">
+                <thead><tr><th style="background-color: var(--green);">Telefone</th><th style="background-color: var(--green);">M</th><th style="background-color: var(--green);">Plano Atual</th><th style="background-color: var(--green);">Franquia Atual</th><th style="background-color: var(--green);">Plano Novo</th><th style="background-color: var(--green);">Franquia Nova</th><th style="background-color: var(--green);">NO CRM</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -206,6 +215,7 @@
 
 
         renderForaMailing(data.fora_mailing || []);
+        renderDentroMailing(data.dentro_mailing || []);
         renderTabelaProdutos('#tablePlanta', data.planta);
         renderTabelaProdutos('#tableRecomendacao', data.recomendacao);
     }
@@ -231,6 +241,35 @@
             html += `<tr>
                 <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
                 <td>${escapeHtml(l.produto)}</td><td class="gb-highlight">${formatarFranquia(l.gb)}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function classeStatus(st) {
+        return st === 'UPGRADE' ? 'status-up' : (st.startsWith('DOWNGRADE') ? 'status-downgrade' : (st === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
+    }
+
+    function renderDentroMailing(linhas) {
+        const box = document.getElementById('dentroMailingBox');
+        const tbody = document.querySelector('#tableDentroMailing tbody');
+        document.getElementById('dentroMailingQtd').textContent = linhas.length;
+        box.classList.toggle('hidden', linhas.length === 0);
+        // Mesmo agrupamento da lista de fora: por M e plano atual
+        const qtdPorGrupo = {};
+        linhas.forEach(l => { const k = l.m + '|' + l.produto; qtdPorGrupo[k] = (qtdPorGrupo[k] || 0) + 1; });
+        let grupoAtual = null, html = '';
+        linhas.forEach(l => {
+            const k = l.m + '|' + l.produto;
+            if (k !== grupoAtual) {
+                grupoAtual = k;
+                html += `<tr class="grupo-dentro"><td colspan="7">M${l.m} · ${escapeHtml(l.produto)} · ${formatarFranquia(l.gb)} · ${qtdPorGrupo[k]} linha(s)</td></tr>`;
+            }
+            html += `<tr>
+                <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
+                <td>${escapeHtml(l.produto)}</td><td>${formatarFranquia(l.gb)}</td>
+                <td>${escapeHtml(l.produto_novo)}</td><td class="gb-highlight">${formatarFranquia(l.gb_novo)}</td>
+                <td class="${classeStatus(l.status)}">${escapeHtml(l.status)}</td>
             </tr>`;
         });
         tbody.innerHTML = html;
