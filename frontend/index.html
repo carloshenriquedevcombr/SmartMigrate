@@ -44,6 +44,7 @@
         .hidden { display: none !important; }
         .flex-container { display: flex; gap: 12px; justify-content: space-between; }
         .flex-container > div { flex: 1; }
+        .grupo-fora td { background-color: #fdecea; color: var(--red); font-weight: 800; font-size: 11px; }
         .gb-highlight { color: var(--blue); font-weight: 700; }
         .alert-obs { background: #fff7ed; border-left: 4px solid var(--orange); padding: 8px; font-size: 11px; color: #9a3412; margin-bottom: 10px; border-radius: 6px; font-weight: 600; }
 
@@ -217,10 +218,22 @@
         tbody.innerHTML = '';
         document.getElementById('foraMailingQtd').textContent = linhas.length;
         box.classList.toggle('hidden', linhas.length === 0);
-        tbody.innerHTML = linhas.map(l => `<tr>
-            <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
-            <td>${escapeHtml(l.produto)}</td><td class="gb-highlight">${formatarFranquia(l.gb)}</td>
-        </tr>`).join('');
+        // Linhas já vêm ordenadas por M e plano; abre um bloco a cada grupo novo
+        const qtdPorGrupo = {};
+        linhas.forEach(l => { const k = l.m + '|' + l.produto; qtdPorGrupo[k] = (qtdPorGrupo[k] || 0) + 1; });
+        let grupoAtual = null, html = '';
+        linhas.forEach(l => {
+            const k = l.m + '|' + l.produto;
+            if (k !== grupoAtual) {
+                grupoAtual = k;
+                html += `<tr class="grupo-fora"><td colspan="4">M${l.m} · ${escapeHtml(l.produto)} · ${formatarFranquia(l.gb)} · ${qtdPorGrupo[k]} linha(s)</td></tr>`;
+            }
+            html += `<tr>
+                <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
+                <td>${escapeHtml(l.produto)}</td><td class="gb-highlight">${formatarFranquia(l.gb)}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
     }
 
     function renderTabelaProdutos(seletor, obj) {

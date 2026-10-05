@@ -206,6 +206,9 @@ def analisar():
                 "status": f["status"],
             })
 
+        # Agrupa as linhas fora do mailing por M e plano atual
+        fora_mailing.sort(key=lambda x: (x["m"], x["gb"], x["produto"].lower(), x["telefone"]))
+
         # Ordenar resumo (opcional, para exibir organizado na tabela do HTML)
         ordem_faixas = {"M0 a M6": 1, "M7 a M16": 2, "M17 a M22": 3, "M23+": 4}
         resumo_crm.sort(key=lambda x: (ordem_faixas.get(x["faixa"], 5), x["status"]))
