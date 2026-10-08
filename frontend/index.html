@@ -80,11 +80,11 @@
                 </div>
                 <div>
                     <strong>Intermediários (M7 a M16)</strong>
-                    <span>Upgrade obrigatório. Sem retroceder plano.</span>
+                    <span>Upgrade obrigatório: a faixa precisa crescer 10% ou mais, senão fica <strong>Fora do Mailing</strong>.</span>
                 </div>
                 <div>
                     <strong>Antigos (M17+)</strong>
-                    <span>Nunca ficam fora do mailing: negativo vira Downgrade.</span>
+                    <span>Nunca ficam fora do mailing. Pela soma da faixa: negativo é Downgrade, de 0% a 5% Padrão, 5% ou mais Upgrade.</span>
                 </div>
             </div>
         </div>
@@ -129,7 +129,7 @@
             </div>
             <div>
                 <table id="tableRecomendacao">
-                    <thead><tr><th style="background-color: var(--purple-dark);">Produto Recomendação (Novo)</th><th style="background-color: var(--purple-dark); width: 130px;">Qtd / Total GB</th></tr></thead>
+                    <thead><tr><th style="background-color: var(--purple-dark);">Plano Final (após análise)</th><th style="background-color: var(--purple-dark); width: 130px;">Qtd / Total GB</th></tr></thead>
                     <tbody></tbody><tfoot></tfoot>
                 </table>
             </div>
@@ -196,13 +196,15 @@
         const tfoot = document.querySelector('#summaryTable tfoot');
         tbody.innerHTML = ''; tfoot.innerHTML = '';
 
+        // Uma linha por faixa, igual à planilha; faixa sem linhas mostra "-"
         data.resumo_crm.forEach(f => {
-            let sc = f.status === 'UPGRADE' ? 'status-up' : (f.status.startsWith('DOWNGRADE') ? 'status-downgrade' : (f.status === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
+            const vazio = f.qtd === 0;
+            const cresc = vazio ? '' : `${f.crescimento.toFixed(2).replace('.',',')}%`;
             tbody.innerHTML += `<tr>
                 <td><strong>${f.faixa}</strong></td><td>${f.qtd}</td>
-                <td>${formatCurrency(f.atual)}</td><td>${formatCurrency(f.novo)}</td>
-                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : (f.crescimento < 0 ? 'var(--red)' : 'var(--blue)')};">${f.crescimento.toFixed(2).replace('.',',')}%</td>
-                <td class="${sc}">${f.status}</td>
+                <td>${vazio ? '-' : formatCurrency(f.atual)}</td><td>${vazio ? '-' : formatCurrency(f.novo)}</td>
+                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : (f.crescimento < 0 ? 'var(--red)' : 'var(--blue)')};">${cresc}</td>
+                <td class="${classeStatus(f.status)}">${f.status}</td>
             </tr>`;
         });
 
@@ -286,7 +288,7 @@
     }
 
     function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v); }
-    function formatarFranquia(gb) { return gb < 1 ? Math.round(gb*1000) + ' MB' : Math.round(gb) + ' GB'; }
+    function formatarFranquia(gb) { if (gb > 0 && gb < 1) return Math.round(gb*1000) + ' MB'; return (Math.round(gb*10)/10).toString().replace('.', ',') + ' GB'; }
 </script>
 </body>
 </html>

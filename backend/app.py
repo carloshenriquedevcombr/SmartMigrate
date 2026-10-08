@@ -19,23 +19,56 @@ CORS(app)  # Permite comunicação com o frontend
 # ==========================================
 # CENTRAL DE REGRAS DE NEGÓCIO EM PYTHON
 # ==========================================
+# O status é decidido pela FAIXA inteira (soma do faturamento da faixa),
+# igual à planilha ANÁLISE MIGRAÇÕES MÓVEL:
+#   M0 a M6   -> sempre FORA DO MAILING
+#   M7 a M16  -> UPGRADE se o crescimento da faixa for >= 10%, senão FORA DO MAILING
+#   M17+      -> nunca fica fora: < 0% DOWNGRADE, >= 5% UPGRADE, entre 0% e 5% PADRÃO
 REGRAS = {
     "FAIXA_1_FIM": 6,  # M0 até M6
     "FAIXA_2_FIM": 16,  # M7 até M16
-    "FAIXA_3_FIM": 22,  # M17 até M22
     "UPGRADE_MIN_M7": 10,  # Crescimento mín. 10%
     "UPGRADE_MIN_M17": 5,  # Crescimento mín. 5%
 }
 
+FAIXAS = ["M0 a M6", "M7 a M16", "M17+"]
+
+
+def faixa_do_m(m):
+    if m <= REGRAS["FAIXA_1_FIM"]:
+        return "M0 a M6"
+    if m <= REGRAS["FAIXA_2_FIM"]:
+        return "M7 a M16"
+    return "M17+"
+
+
+def status_da_faixa(faixa, crescimento, qtd):
+    if faixa == "M0 a M6":
+        return "FORA DO MAILING"
+    if faixa == "M7 a M16":
+        # Sem linhas na faixa, vale a regra padrão dela (upgrade obrigatório)
+        if qtd == 0 or crescimento >= REGRAS["UPGRADE_MIN_M7"]:
+            return "UPGRADE"
+        return "FORA DO MAILING"
+    if crescimento < 0:
+        return "DOWNGRADE"
+    if crescimento >= REGRAS["UPGRADE_MIN_M17"]:
+        return "UPGRADE"
+    return "PADRÃO"
+
 
 def extrair_gb(nome_produto):
+    """Franquia em GB a partir do nome do produto (ex: '6GB', '1,5 GB', '200MB')."""
     if not isinstance(nome_produto, str):
         return 0
-    if "0.2" in nome_produto or "0,2" in nome_produto:
-        return 0.2
-    
-    match = re.search(r"(\d+)\s*GB", nome_produto, re.IGNORECASE)
-    return int(match.group(1)) if match else 0
+    achados = re.findall(r"(\d+(?:[.,]\d+)?)\s*(GB|MB)", nome_produto, re.IGNORECASE)
+    if not achados:
+        return 0
+    valor, unidade = achados[-1]
+    gb = float(valor.replace(",", "."))
+    if unidade.upper() == "MB":
+        gb = gb / 1000
+    return int(gb) if gb.is_integer() else gb
 
 
 # Nomes aceitos para a coluna do número da linha (sem diferenciar maiúsculas)
@@ -104,71 +137,55 @@ def analisar():
             .fillna("Sem Informação")
         )
 
-        # Agora agrupamos por (Faixa, Status) para ter granularidade de linha a linha
-        faixas_resultado = {}
-        contagem_planta = {}
-        contagem_recomendacao = {}
-        fora_mailing = []
-        dentro_mailing = []
         coluna_telefone = achar_coluna_telefone(df)
 
+        # 1) Soma o faturamento de cada faixa para decidir o status da faixa inteira
+        df["Faixa"] = df["M"].apply(faixa_do_m)
+        resumo_crm = []
+        status_por_faixa = {}
+        total_count, total_atual, total_novo = 0, 0.0, 0.0
+        for faixa in FAIXAS:
+            dados = df[df["Faixa"] == faixa]
+            qtd = int(len(dados))
+            atual = float(dados["FaturamentoAtual"].sum())
+            novo = float(dados["FaturamentoPara"].sum())
+            crescimento = ((novo - atual) / atual * 100) if atual > 0 else 0.0
+            status = status_da_faixa(faixa, crescimento, qtd)
+            status_por_faixa[faixa] = status
+            total_count += qtd
+            total_atual += atual
+            total_novo += novo
+            resumo_crm.append({
+                "faixa": faixa,
+                "qtd": qtd,
+                "atual": atual,
+                "novo": novo,
+                "crescimento": round(crescimento, 2),
+                "status": status,
+            })
+
+        crescimento_geral = (
+            ((total_novo - total_atual) / total_atual * 100) if total_atual > 0 else 0.0
+        )
+
+        # 2) Cada linha segue o status da sua faixa. Fora do mailing continua no plano atual.
+        fora_mailing, dentro_mailing = [], []
+        contagem_planta, contagem_final = {}, {}
         for _, row in df.iterrows():
-            m = row["M"]
-            fat_atual = row["FaturamentoAtual"]
-            fat_novo = row["FaturamentoPara"]
             planta = row["ProdutoPlanta"]
             recomendacao = row["ProdutoRecomendacao"]
-
-            # Calcula o delta (crescimento) individual do cliente (registro a registro)
-            crescimento_linha = (
-                ((fat_novo - fat_atual) / fat_atual * 100) if fat_atual > 0 else 0.0
-            )
-
-            status = "-"
-            fx = "-"
-
-            # Classificação por faixa de meses e aplicação de regras
-            if m <= REGRAS["FAIXA_1_FIM"]:
-                fx = "M0 a M6"
-                status = "FORA DO MAILING"
-                
-            elif m <= REGRAS["FAIXA_2_FIM"]:
-                fx = "M7 a M16"
-                if crescimento_linha >= REGRAS["UPGRADE_MIN_M7"]:
-                    status = "UPGRADE"
-                else:
-                    status = "FORA DO MAILING"
-                    
-            elif m <= REGRAS["FAIXA_3_FIM"]:
-                fx = "M17 a M22"
-                # Regra 3: M17+ nunca fica fora do mailing; valor negativo = Downgrade
-                if crescimento_linha < 0:
-                    status = "DOWNGRADE"
-                elif crescimento_linha >= REGRAS["UPGRADE_MIN_M17"]:
-                    status = "UPGRADE"
-                else:
-                    status = "PADRÃO"
-                    
-            else:
-                fx = "M23+"
-                # Mesma regra do M17 a M22: negativo = Downgrade
-                if crescimento_linha < 0:
-                    status = "DOWNGRADE"
-                elif crescimento_linha >= REGRAS["UPGRADE_MIN_M17"]:
-                    status = "UPGRADE"
-                else:
-                    status = "PADRÃO"
-
-            # Lista linha a linha: fora do mailing (fica no plano atual) ou dentro (vai para a recomendação)
+            status = status_por_faixa[row["Faixa"]]
             linha = {
                 "telefone": formatar_telefone(row[coluna_telefone]) if coluna_telefone else "",
-                "m": int(m),
+                "m": int(row["M"]),
                 "produto": planta,
                 "gb": extrair_gb(planta),
             }
             if status == "FORA DO MAILING":
+                plano_final = planta
                 fora_mailing.append(linha)
             else:
+                plano_final = recomendacao
                 linha.update({
                     "produto_novo": recomendacao,
                     "gb_novo": extrair_gb(recomendacao),
@@ -176,76 +193,29 @@ def analisar():
                 })
                 dentro_mailing.append(linha)
 
-            # Agregação dos resultados
-            chave_agrupamento = f"{fx}|{status}"
-            if chave_agrupamento not in faixas_resultado:
-                faixas_resultado[chave_agrupamento] = {"faixa": fx, "status": status, "count": 0, "atual": 0.0, "novo": 0.0}
-            
-            faixas_resultado[chave_agrupamento]["count"] += 1
-            faixas_resultado[chave_agrupamento]["atual"] += fat_atual
-            faixas_resultado[chave_agrupamento]["novo"] += fat_novo
-
             contagem_planta[planta] = contagem_planta.get(planta, 0) + 1
-            contagem_recomendacao[recomendacao] = (
-                contagem_recomendacao.get(recomendacao, 0) + 1
-            )
+            contagem_final[plano_final] = contagem_final.get(plano_final, 0) + 1
 
-        # Montando estrutura de resposta para o Frontend
-        resumo_crm = []
-        total_count, total_atual, total_novo = 0, 0.0, 0.0
-
-        for f in faixas_resultado.values():
-            if f["count"] == 0:
-                continue
-                
-            total_count += f["count"]
-            total_atual += f["atual"]
-            total_novo += f["novo"]
-
-            crescimento_grupo = (
-                ((f["novo"] - f["atual"]) / f["atual"] * 100) if f["atual"] > 0 else 0.0
-            )
-
-            resumo_crm.append({
-                "faixa": f["faixa"],
-                "qtd": f["count"],
-                "atual": f["atual"],
-                "novo": f["novo"],
-                "crescimento": round(crescimento_grupo, 2),
-                "status": f["status"],
-            })
-
-        # Agrupa as linhas fora do mailing por M e plano atual
+        # Agrupa as listas por M e plano atual
         def ordem_linha(x):
             return (x["m"], x["gb"], x["produto"].lower(), x.get("gb_novo", 0), x.get("produto_novo", "").lower(), x["telefone"])
 
         fora_mailing.sort(key=ordem_linha)
         dentro_mailing.sort(key=ordem_linha)
 
-        # Ordenar resumo (opcional, para exibir organizado na tabela do HTML)
-        ordem_faixas = {"M0 a M6": 1, "M7 a M16": 2, "M17 a M22": 3, "M23+": 4}
-        resumo_crm.sort(key=lambda x: (ordem_faixas.get(x["faixa"], 5), x["status"]))
-
-        crescimento_geral = (
-            ((total_novo - total_atual) / total_atual * 100)
-            if total_atual > 0
-            else 0.0
-        )
-
         # Produtos e Franquias
         def processar_produtos(dicionario):
             lista = []
             qtd_tot, gb_tot = 0, 0.0
             for prod, qtd in sorted(dicionario.items(), key=lambda x: x[1], reverse=True):
-                gb_unit = extrair_gb(prod)
-                gb_prod = gb_unit * qtd
+                gb_prod = extrair_gb(prod) * qtd
                 qtd_tot += qtd
                 gb_tot += gb_prod
                 lista.append({"nome": prod, "qtd": qtd, "gb": gb_prod})
             return lista, qtd_tot, gb_tot
 
         planta_lista, q_p, gb_p = processar_produtos(contagem_planta)
-        rec_lista, q_r, gb_r = processar_produtos(contagem_recomendacao)
+        rec_lista, q_r, gb_r = processar_produtos(contagem_final)
 
         return jsonify({
             "success": True,
