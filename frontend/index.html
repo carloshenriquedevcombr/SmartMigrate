@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Análise de Migrações Móvel — Portfolio</title>
+    <title>NexusSmartMigrate — Análise de Migrações Móvel</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -22,6 +22,7 @@
         input[type="file"] { display: none; }
         .file-select-label { display: inline-block; background-color: white; color: var(--purple); border: 2px solid var(--purple); padding: 8px 16px; font-size: 12px; font-weight: 700; border-radius: 6px; cursor: pointer; }
         .file-name { display: block; margin-top: 8px; font-size: 11px; color: var(--muted); }
+
         .btn-calculate { display: none; width: 100%; background-color: var(--purple); color: white; border: none; padding: 11px; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; margin-top: 10px; margin-bottom: 15px; }
         .btn-back { background-color: var(--muted); color: white; border: none; padding: 6px 12px; font-size: 11px; font-weight: 600; border-radius: 6px; cursor: pointer; margin-bottom: 12px; }
         
@@ -43,6 +44,8 @@
         .hidden { display: none !important; }
         .flex-container { display: flex; gap: 12px; justify-content: space-between; }
         .flex-container > div { flex: 1; }
+        .grupo-dentro td { background-color: #e8f5ee; color: var(--green); font-weight: 800; font-size: 11px; }
+        .grupo-fora td { background-color: #fdecea; color: var(--red); font-weight: 800; font-size: 11px; }
         .gb-highlight { color: var(--blue); font-weight: 700; }
         .alert-obs { background: #fff7ed; border-left: 4px solid var(--orange); padding: 8px; font-size: 11px; color: #9a3412; margin-bottom: 10px; border-radius: 6px; font-weight: 600; }
 
@@ -54,7 +57,7 @@
 <body>
 
 <div class="container">
-    <h1>📊 Análise de Migrações Móvel</h1>
+    <h1>📊 NexusSmartMigrate</h1>
     <p>Processamento robusto via Backend Python (Flask + Pandas).</p>
 
     <!-- TELA 1 -->
@@ -73,15 +76,15 @@
             <div class="rules-grid">
                 <div>
                     <strong>Clientes Novos (M0 a M6)</strong>
-                    <span>Não entram nas ofertas de troca e ficam <strong>Fora do Mailing</strong>.</span>
+                    <span>Upgrade sempre obrigatório, mas ficam <strong>Fora do Mailing</strong>.</span>
                 </div>
                 <div>
                     <strong>Intermediários (M7 a M16)</strong>
-                    <span>Upgrade obrigatório (dobro da franquia de internet). Sem retroceder plano.</span>
+                    <span>Upgrade obrigatório: a faixa precisa crescer 10% ou mais, senão fica <strong>Fora do Mailing</strong>.</span>
                 </div>
                 <div>
-                    <strong>Antigos e M23+ (M17+)</strong>
-                    <span>Upgrade, Padrão ou Downgrade. Analisar o <strong>Red. Limite</strong> para não ultrapassar.</span>
+                    <strong>Antigos (M17+)</strong>
+                    <span>Nunca ficam fora do mailing. Pela soma da faixa: negativo é Downgrade, de 0% a 5% Padrão, 5% ou mais Upgrade.</span>
                 </div>
             </div>
         </div>
@@ -90,9 +93,6 @@
     <!-- TELA 2 -->
     <div id="screenResults" class="hidden">
         <button id="btnBack" class="btn-back">⬅️ Enviar Nova Planilha</button>
-        <div id="obsAlert" class="alert-obs hidden">
-            ⚠️ <strong>Observação Importante (M17+):</strong> Analisar o <strong>Red. Limite</strong> para garantir que clientes em redução não ultrapassem os limites.
-        </div>
 
         <h2>🎯 Resumo NO CRM (Total)</h2>
         <table id="summaryTable">
@@ -113,17 +113,34 @@
             </div>
             <div>
                 <table id="tableRecomendacao">
-                    <thead><tr><th style="background-color: var(--purple-dark);">Produto Recomendação (Novo)</th><th style="background-color: var(--purple-dark); width: 130px;">Qtd / Total GB</th></tr></thead>
+                    <thead><tr><th style="background-color: var(--purple-dark);">Plano Final (após análise)</th><th style="background-color: var(--purple-dark); width: 130px;">Qtd / Total GB</th></tr></thead>
                     <tbody></tbody><tfoot></tfoot>
                 </table>
             </div>
         </div>
+
+        <div id="dentroMailingBox" class="hidden">
+            <h2>✅ Linhas Dentro do Mailing (<span id="dentroMailingQtd">0</span>)</h2>
+            <table id="tableDentroMailing">
+                <thead><tr><th style="background-color: var(--green);">Telefone</th><th style="background-color: var(--green);">M</th><th style="background-color: var(--green);">Plano Atual</th><th style="background-color: var(--green);">Franquia Atual</th><th style="background-color: var(--green);">Plano Novo</th><th style="background-color: var(--green);">Franquia Nova</th><th style="background-color: var(--green);">NO CRM</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="foraMailingBox" class="hidden">
+            <h2>🚫 Linhas Fora do Mailing (<span id="foraMailingQtd">0</span>)</h2>
+            <table id="tableForaMailing">
+                <thead><tr><th style="background-color: var(--red);">Telefone</th><th style="background-color: var(--red);">M</th><th style="background-color: var(--red);">Plano Atual</th><th style="background-color: var(--red);">Franquia Atual</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
     </div>
 </div>
 
 <script>
     let arquivoBruto = null;
-    const API_URL = "http://localhost:5000/api/analisar"; // Altere para o IP da sua VPS em produção
+    const API_URL = "/api/analisar"; // Mesmo domínio: o Flask serve esta página e a API
 
     const fileInput = document.getElementById('fileUpload');
     const fileNameSpan = document.getElementById('fileName');
@@ -142,6 +159,7 @@
 
     btnCalculate.addEventListener('click', async () => {
         if (!arquivoBruto) return;
+
         btnCalculate.textContent = "Processando no Servidor Python...";
         
         const formData = new FormData();
@@ -166,7 +184,8 @@
     });
 
     btnBack.addEventListener('click', () => {
-        fileInput.value = ''; arquivoBruto = null;
+        fileInput.value = ''; 
+        arquivoBruto = null;
         fileNameSpan.textContent = "Nenhum arquivo escolhido";
         btnCalculate.style.display = "none";
         screenResults.classList.add('hidden');
@@ -178,13 +197,15 @@
         const tfoot = document.querySelector('#summaryTable tfoot');
         tbody.innerHTML = ''; tfoot.innerHTML = '';
 
+        // Uma linha por faixa, igual à planilha; faixa sem linhas mostra "-"
         data.resumo_crm.forEach(f => {
-            let sc = f.status === 'UPGRADE' ? 'status-up' : (f.status === 'DOWNGRADE' ? 'status-downgrade' : (f.status === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
+            const vazio = f.qtd === 0;
+            const cresc = vazio ? '' : `${f.crescimento.toFixed(2).replace('.',',')}%`;
             tbody.innerHTML += `<tr>
                 <td><strong>${f.faixa}</strong></td><td>${f.qtd}</td>
-                <td>${formatCurrency(f.atual)}</td><td>${formatCurrency(f.novo)}</td>
-                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : 'var(--blue)'};">${f.crescimento.toFixed(2).replace('.',',')}%</td>
-                <td class="${sc}">${f.status}</td>
+                <td>${vazio ? '-' : formatCurrency(f.atual)}</td><td>${vazio ? '-' : formatCurrency(f.novo)}</td>
+                <td style="color: ${f.crescimento > 0 ? 'var(--green)' : (f.crescimento < 0 ? 'var(--red)' : 'var(--blue)')};">${cresc}</td>
+                <td class="${classeStatus(f.status)}">${f.status}</td>
             </tr>`;
         });
 
@@ -195,11 +216,66 @@
             <td>-</td>
         </tr>`;
 
-        if (data.tem_m17_mais) document.getElementById('obsAlert').classList.remove('hidden');
-        else document.getElementById('obsAlert').classList.add('hidden');
 
+        renderForaMailing(data.fora_mailing || []);
+        renderDentroMailing(data.dentro_mailing || []);
         renderTabelaProdutos('#tablePlanta', data.planta);
         renderTabelaProdutos('#tableRecomendacao', data.recomendacao);
+    }
+
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+    function renderForaMailing(linhas) {
+        const box = document.getElementById('foraMailingBox');
+        const tbody = document.querySelector('#tableForaMailing tbody');
+        tbody.innerHTML = '';
+        document.getElementById('foraMailingQtd').textContent = linhas.length;
+        box.classList.toggle('hidden', linhas.length === 0);
+        // Linhas já vêm ordenadas por M e plano; abre um bloco a cada grupo novo
+        const qtdPorGrupo = {};
+        linhas.forEach(l => { const k = l.m + '|' + l.produto; qtdPorGrupo[k] = (qtdPorGrupo[k] || 0) + 1; });
+        let grupoAtual = null, html = '';
+        linhas.forEach(l => {
+            const k = l.m + '|' + l.produto;
+            if (k !== grupoAtual) {
+                grupoAtual = k;
+                html += `<tr class="grupo-fora"><td colspan="4">M${l.m} · ${escapeHtml(l.produto)} · ${formatarFranquia(l.gb)} · ${qtdPorGrupo[k]} linha(s)</td></tr>`;
+            }
+            html += `<tr>
+                <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
+                <td>${escapeHtml(l.produto)}</td><td class="gb-highlight">${formatarFranquia(l.gb)}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function classeStatus(st) {
+        return st === 'UPGRADE' ? 'status-up' : (st.startsWith('DOWNGRADE') ? 'status-downgrade' : (st === 'PADRÃO' ? 'status-padrao' : 'status-fora'));
+    }
+
+    function renderDentroMailing(linhas) {
+        const box = document.getElementById('dentroMailingBox');
+        const tbody = document.querySelector('#tableDentroMailing tbody');
+        document.getElementById('dentroMailingQtd').textContent = linhas.length;
+        box.classList.toggle('hidden', linhas.length === 0);
+        // Mesmo agrupamento da lista de fora: por M e plano atual
+        const qtdPorGrupo = {};
+        linhas.forEach(l => { const k = l.m + '|' + l.produto; qtdPorGrupo[k] = (qtdPorGrupo[k] || 0) + 1; });
+        let grupoAtual = null, html = '';
+        linhas.forEach(l => {
+            const k = l.m + '|' + l.produto;
+            if (k !== grupoAtual) {
+                grupoAtual = k;
+                html += `<tr class="grupo-dentro"><td colspan="7">M${l.m} · ${escapeHtml(l.produto)} · ${formatarFranquia(l.gb)} · ${qtdPorGrupo[k]} linha(s)</td></tr>`;
+            }
+            html += `<tr>
+                <td><strong>${escapeHtml(l.telefone || '-')}</strong></td><td>M${l.m}</td>
+                <td>${escapeHtml(l.produto)}</td><td>${formatarFranquia(l.gb)}</td>
+                <td>${escapeHtml(l.produto_novo)}</td><td class="gb-highlight">${formatarFranquia(l.gb_novo)}</td>
+                <td class="${classeStatus(l.status)}">${escapeHtml(l.status)}</td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
     }
 
     function renderTabelaProdutos(seletor, obj) {
@@ -213,7 +289,7 @@
     }
 
     function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v); }
-    function formatarFranquia(gb) { return gb < 1 ? Math.round(gb*1000) + ' MB' : Math.round(gb) + ' GB'; }
+    function formatarFranquia(gb) { if (gb > 0 && gb < 1) return Math.round(gb*1000) + ' MB'; return (Math.round(gb*10)/10).toString().replace('.', ',') + ' GB'; }
 </script>
 </body>
 </html>
